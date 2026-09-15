@@ -33,7 +33,9 @@ import time
 # pyrefly: ignore [missing-import]
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def gemini_speculative_cascade_demo():
     """
@@ -46,14 +48,14 @@ def gemini_speculative_cascade_demo():
     # -------------------------------------------------------------------------
     # API Key & Client Setup
     # -------------------------------------------------------------------------
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
-        print("[Warning] GEMINI_API_KEY environment variable is not set.")
-        print("To run live calls against Google Cloud, set export GEMINI_API_KEY='your_api_key'.\n")
+        print("[Warning] GOOGLE_API_KEY environment variable is not set.")
+        print("To run live calls against Google Cloud, set export GOOGLE_API_KEY='your_api_key'.\n")
 
     client = genai.Client()
     draft_model = "gemini-2.5-flash"
-    target_model = "gemini-2.5-pro"
+    target_model = "gemini-3.1-pro-preview"
 
     user_query = "Draft a Python function that performs parallel matrix multiplication using PyTorch tensors."
 
