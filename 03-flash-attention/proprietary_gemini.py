@@ -40,10 +40,10 @@ def gemini_long_context_demo():
     # -------------------------------------------------------------------------
     # API Key & Client Setup
     # -------------------------------------------------------------------------
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
-        print("[Warning] GEMINI_API_KEY environment variable is not set.")
-        print("To run live, set export GEMINI_API_KEY='your_api_key'.\n")
+        print("[Warning] GOOGLE_API_KEY environment variable is not set.")
+        print("To run live, set export GOOGLE_API_KEY='your_api_key'.\n")
 
     client = genai.Client()
     model_name = "gemini-2.5-flash"
