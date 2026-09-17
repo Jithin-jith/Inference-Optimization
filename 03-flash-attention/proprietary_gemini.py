@@ -5,7 +5,7 @@ MODULE 03: GEMINI MILLION-TOKEN LONG-CONTEXT PROCESSING
 
 CONCEPT OVERVIEW:
 -----------------
-Google Gemini models (such as `gemini-2.5-flash` and `gemini-2.5-pro`) support context windows
+Google Gemini models (such as `gemini-2.5-flash` and `gemini-3.1-pro-preview`) support context windows
 of 1,000,000 to 2,000,000+ tokens.
 
 HOW GOOGLE ACHIEVES THIS AT THE INFRASTRUCTURE LAYER:
@@ -24,10 +24,10 @@ Using the official `google-genai` SDK to execute a Needle-in-a-Haystack search o
 
 import os
 import time
-# pyrefly: ignore [missing-import]
 from google import genai
 from google.genai import types
-
+from dotenv import load_dotenv
+load_dotenv()
 
 def gemini_long_context_demo():
     """
