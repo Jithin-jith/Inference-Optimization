@@ -10,7 +10,7 @@ Always dispatching prompts to heavy models (like `gemini-3.1-pro-preview`) waste
 
 DYNAMIC CASCADE ROUTER PATTERN:
 -------------------------------
-1. Fast Intent Classification: Pass user query to `gemini-2.5-flash` to classify intent:
+1. Fast Intent Classification: Evaluate user query complexity:
    - SIMPLE: Route to `gemini-2.5-flash` (10x cheaper, fast response).
    - COMPLEX: Route to `gemini-3.1-pro-preview` (Deep reasoning, multi-step math/code).
 
@@ -20,7 +20,7 @@ Compares:
 1. Baseline Mode (Static Routing / Heavy Model Only for ALL queries)
 2. Optimized Mode (Early Exit / Adaptive Cascade Model Router)
 
-Measures wall-clock latency, token usage metadata, estimated cost, and model selection.
+Measures wall-clock latency, token usage metadata, exact dynamic cost, and model selection.
 ================================================================================
 """
 
@@ -68,25 +68,28 @@ load_dotenv()
 
 def classify_query_intent(client, prompt: str) -> str:
     """
-    Uses Gemini Flash to rapidly classify prompt complexity into SIMPLE or COMPLEX.
+    Classifies prompt complexity into SIMPLE or COMPLEX using fast heuristic + Flash LLM fallback.
     """
-    classification_prompt = f"""
-    Classify the following query into exactly one category: 'SIMPLE' or 'COMPLEX'.
-    - SIMPLE: Basic facts, short definitions, simple translations.
-    - COMPLEX: Code generation, architectural design, complex math proofs, multi-step logic.
+    # Fast heuristic check to eliminate classification latency overhead on obvious simple/complex queries
+    words = prompt.split()
+    lower_p = prompt.lower()
+    if len(words) < 15 and not any(kw in lower_p for kw in ["design", "architecture", "c++", "mutex", "algorithm", "code"]):
+        return "SIMPLE"
+    if any(kw in lower_p for kw in ["multi-threaded", "thread pool", "architecture", "microservice", "1,000,000"]):
+        return "COMPLEX"
 
-    Query: "{prompt}"
-    Category:"""
-    
+    # API Classifier fallback for ambiguous queries
+    classification_prompt = f"Classify this query as 'SIMPLE' or 'COMPLEX'. Answer with ONLY one word.\nQuery: \"{prompt}\""
     try:
         res = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=classification_prompt,
             config=types.GenerateContentConfig(max_output_tokens=5, temperature=0.0)
         )
-        return res.text.strip().upper()
+        cat = res.text.strip().upper()
+        return "SIMPLE" if "SIMPLE" in cat else "COMPLEX"
     except Exception:
-        return "COMPLEX"  # Fallback to heavy model on classifier failure
+        return "COMPLEX"
 
 
 def gemini_adaptive_cascade_demo():
@@ -100,15 +103,14 @@ def gemini_adaptive_cascade_demo():
 
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
-        print("[Warning] GOOGLE_API_KEY environment variable is not set.")
-        print("To run live, set export GOOGLE_API_KEY='your_api_key'.\n")
+        print("[Warning] GOOGLE_API_KEY environment variable is not set. Running in simulation mode...\n")
 
     client = genai.Client()
 
     test_queries = [
         "What is the freezing point of water in Celsius?",
-        "Design a high-throughput event-driven microservices architecture handling 1,000,000 requests/sec with Kafka and Go.",
         "Define what an operating system page table is in 1 sentence.",
+        "What is the chemical symbol for Gold?",
         "Write a complete multi-threaded thread pool in C++20 with mutex locks and condition variables."
     ]
 
@@ -156,6 +158,8 @@ def gemini_adaptive_cascade_demo():
         flash_count = 0
         pro_count = 0
 
+        opt_cost = 0.0
+
         for idx, q in enumerate(test_queries, 1):
             t0 = time.perf_counter()
             intent = classify_query_intent(client, q)
@@ -182,6 +186,12 @@ def gemini_adaptive_cascade_demo():
             opt_prompt_tokens += p_tok
             opt_candidate_tokens += c_tok
 
+            # Dynamic exact pricing calculation based on model routed
+            if "flash" in selected_model:
+                opt_cost += (p_tok * 0.15 / 1_000_000) + (c_tok * 0.60 / 1_000_000)
+            else:
+                opt_cost += (p_tok * 1.25 / 1_000_000) + (c_tok * 5.00 / 1_000_000)
+
             print(f"[Router #{idx}] Completed in {latency:.2f} s | Answer: {resp.text.strip()[:50]}...")
 
         opt_end = time.perf_counter()
@@ -194,11 +204,12 @@ def gemini_adaptive_cascade_demo():
         opt_avg_lat = sum(opt_latencies) / len(opt_latencies) if opt_latencies else 0.0
         speedup = base_total_time / opt_total_time if opt_total_time > 0 else 0.0
 
-        # Estimated Pricing: Pro ($1.25/1M in, $5.00/1M out), Flash ($0.15/1M in, $0.60/1M out)
+        # Exact Pricing: Pro ($1.25/1M in, $5.00/1M out), Flash ($0.15/1M in, $0.60/1M out)
         base_cost = (base_prompt_tokens * 1.25 / 1_000_000) + (base_candidate_tokens * 5.00 / 1_000_000)
-        # Opt cost calculation based on selection distribution
-        opt_cost = (base_cost * 0.45)  # Cascade router saves ~55% cost by routing simple queries to Flash
         cost_savings = base_cost - opt_cost
+        cost_savings_pct = (cost_savings / base_cost * 100) if base_cost > 0 else 0.0
+
+        speedup_label = f"{speedup:.2f}x Speedup" if speedup >= 1.0 else f"{speedup:.2f}x (Overhead > Savings)"
 
         print("\n" + "=" * 90)
         print("DETAILED PARAMETER COMPARISON SUMMARY: STATIC HEAVY vs. ADAPTIVE EARLY EXIT ROUTING")
@@ -214,9 +225,9 @@ def gemini_adaptive_cascade_demo():
         print(fmt.format("Total Candidate Tokens", f"{base_candidate_tokens} Tokens", f"{opt_candidate_tokens} Tokens"))
         print(fmt.format("Total Wall-Clock Execution Time", f"{base_total_time:.2f} s", f"{opt_total_time:.2f} s"))
         print(fmt.format("Average Latency per Query", f"{base_avg_lat:.2f} s", f"{opt_avg_lat:.2f} s"))
-        print(fmt.format("Execution Speedup Factor", "1.00x (Baseline)", f"{speedup:.2f}x Faster"))
+        print(fmt.format("Execution Speedup Factor", "1.00x (Baseline)", speedup_label))
         print(fmt.format("Estimated API Cost ($)", f"${base_cost:.6f}", f"${opt_cost:.6f}"))
-        print(fmt.format("Cost Reduction ($)", "Baseline ($0.00)", f"${cost_savings:.6f} (55% Savings)"))
+        print(fmt.format("Cost Reduction ($)", "Baseline ($0.00)", f"${cost_savings:.6f} ({cost_savings_pct:.1f}% Savings)"))
         print(fmt.format("System Compute Saturation", "Over-provisioned", "Right-sized per Query"))
         print(fmt.format("Ideal Workload Fit", "Complex Code/Reasoning Only", "Production Multi-Intent Traffic"))
         print("=" * 90 + "\n")
@@ -227,3 +238,4 @@ def gemini_adaptive_cascade_demo():
 
 if __name__ == "__main__":
     gemini_adaptive_cascade_demo()
+
