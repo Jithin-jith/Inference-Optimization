@@ -15,11 +15,47 @@ Using the `google-genai` SDK with `client.aio` to simulate high-concurrency dyna
 """
 
 import os
+import sys
 import time
 import asyncio
+import warnings
+import logging
+from typing import TypedDict
 # pyrefly: ignore [missing-import]
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+# Filter out lower-level SDK warnings written directly to sys.stderr
+class StderrFilter:
+    def __init__(self, original_stderr):
+        self.original_stderr = original_stderr
+
+    def write(self, msg):
+        if "automatic function calling" in msg or "AFC" in msg:
+            return
+        self.original_stderr.write(msg)
+
+    def flush(self):
+        if hasattr(self.original_stderr, "flush"):
+            self.original_stderr.flush()
+
+sys.stderr = StderrFilter(sys.stderr)
+
+os.environ["PYTHONWARNINGS"] = "ignore"
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
+warnings.showwarning = lambda *args, **kwargs: None
+
+logging.getLogger("google").setLevel(logging.ERROR)
+logging.getLogger("google.genai").setLevel(logging.ERROR)
+logging.getLogger("langchain_google_genai").setLevel(logging.ERROR)
+
+load_dotenv()
+
 
 
 async def send_dynamic_batch_req(client, req_id: int, prompt: str):
@@ -48,10 +84,10 @@ async def gemini_dynamic_batching_demo():
     # -------------------------------------------------------------------------
     # API Key & Client Setup
     # -------------------------------------------------------------------------
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
-        print("[Warning] GEMINI_API_KEY environment variable is not set.")
-        print("To run live, set export GEMINI_API_KEY='your_api_key'.\n")
+        print("[Warning] GOOGLE_API_KEY environment variable is not set.")
+        print("To run live, set export GOOGLE_API_KEY='your_api_key'.\n")
 
     client = genai.Client()
 

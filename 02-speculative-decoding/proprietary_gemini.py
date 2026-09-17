@@ -30,8 +30,40 @@ This script performs a detailed timing and latency comparison between:
 """
 
 import os
+import sys
 import time
+import warnings
+import logging
+from typing import TypedDict
 from dotenv import load_dotenv
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+# Filter out lower-level SDK warnings written directly to sys.stderr
+class StderrFilter:
+    def __init__(self, original_stderr):
+        self.original_stderr = original_stderr
+
+    def write(self, msg):
+        if "automatic function calling" in msg or "AFC" in msg:
+            return
+        self.original_stderr.write(msg)
+
+    def flush(self):
+        if hasattr(self.original_stderr, "flush"):
+            self.original_stderr.flush()
+
+sys.stderr = StderrFilter(sys.stderr)
+
+os.environ["PYTHONWARNINGS"] = "ignore"
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
+warnings.showwarning = lambda *args, **kwargs: None
+
+logging.getLogger("google").setLevel(logging.ERROR)
+logging.getLogger("google.genai").setLevel(logging.ERROR)
+logging.getLogger("langchain_google_genai").setLevel(logging.ERROR)
 
 load_dotenv()
 
@@ -42,6 +74,7 @@ try:
     GENAI_AVAILABLE = True
 except ImportError:
     GENAI_AVAILABLE = False
+
 
 
 def print_header(title: str):
@@ -172,7 +205,7 @@ def run_simulated_gemini_benchmark():
     print("Demonstrating empirical performance benchmark: Direct Execution vs. Speculative Draft-Target Cascade.\n")
 
     draft_model = "gemini-2.5-flash (Draft Engine)"
-    target_model = "gemini-2.5-pro (Target Model)"
+    target_model = "gemini-3.1-pro-preview (Target Model)"
 
     # Realistic simulated timing benchmarks for a ~300 token output:
     # Direct target generation: ~3.85s (high memory bandwidth decode cost)

@@ -58,10 +58,10 @@ ollama pull llama3.2:3b
 Obtain a Google Gemini API key from [Google AI Studio](https://aistudio.google.com/) and set your environment variable:
 ```bash
 # On Windows PowerShell:
-$env:GEMINI_API_KEY="your-gemini-api-key"
+$env:GOOGLE_API_KEY="your-gemini-api-key"
 
 # On Linux/macOS:
-export GEMINI_API_KEY="your-gemini-api-key"
+export GOOGLE_API_KEY="your-gemini-api-key"
 ```
 
 ---

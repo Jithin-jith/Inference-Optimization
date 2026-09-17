@@ -6,13 +6,13 @@ MODULE 06: GEMINI DYNAMIC ADAPTIVE ROUTER (FLASH VS PRO CASCADE)
 CONCEPT OVERVIEW:
 -----------------
 Enterprise AI systems handle diverse workloads: simple factual questions vs complex software design.
-Always dispatching prompts to heavy models (like `gemini-2.5-pro`) wastes budget and increases latency.
+Always dispatching prompts to heavy models (like `gemini-3.1-pro-preview`) wastes budget and increases latency.
 
 DYNAMIC CASCADE ROUTER PATTERN:
 -------------------------------
 1. Fast Intent Classification: Pass user query to `gemini-2.5-flash` with a concise prompt to classify intent:
    - SIMPLE: Route to `gemini-2.5-flash` (10x cheaper, fast response).
-   - COMPLEX: Route to `gemini-2.5-pro` (Deep reasoning, multi-step math/code).
+   - COMPLEX: Route to `gemini-3.1-pro-preview` (Deep reasoning, multi-step math/code).
 
 BENEFITS:
 ---------
@@ -26,10 +26,46 @@ Using the `google-genai` SDK to build a two-stage classifier-router pipeline.
 """
 
 import os
+import sys
 import time
+import warnings
+import logging
+from typing import TypedDict
 # pyrefly: ignore [missing-import]
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+# Filter out lower-level SDK warnings written directly to sys.stderr
+class StderrFilter:
+    def __init__(self, original_stderr):
+        self.original_stderr = original_stderr
+
+    def write(self, msg):
+        if "automatic function calling" in msg or "AFC" in msg:
+            return
+        self.original_stderr.write(msg)
+
+    def flush(self):
+        if hasattr(self.original_stderr, "flush"):
+            self.original_stderr.flush()
+
+sys.stderr = StderrFilter(sys.stderr)
+
+os.environ["PYTHONWARNINGS"] = "ignore"
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
+warnings.showwarning = lambda *args, **kwargs: None
+
+logging.getLogger("google").setLevel(logging.ERROR)
+logging.getLogger("google.genai").setLevel(logging.ERROR)
+logging.getLogger("langchain_google_genai").setLevel(logging.ERROR)
+
+load_dotenv()
+
 
 
 def classify_query_intent(client, prompt: str) -> str:
@@ -66,10 +102,10 @@ def gemini_adaptive_cascade_demo():
     # -------------------------------------------------------------------------
     # API Key & Client Setup
     # -------------------------------------------------------------------------
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
-        print("[Warning] GEMINI_API_KEY environment variable is not set.")
-        print("To run live, set export GEMINI_API_KEY='your_api_key'.\n")
+        print("[Warning] GOOGLE_API_KEY environment variable is not set.")
+        print("To run live, set export GOOGLE_API_KEY='your_api_key'.\n")
 
     client = genai.Client()
 
@@ -86,7 +122,7 @@ def gemini_adaptive_cascade_demo():
         intent = classify_query_intent(client, q)
         
         # Step 2: Select target model based on intent
-        selected_model = "gemini-2.5-flash" if "SIMPLE" in intent else "gemini-2.5-pro"
+        selected_model = "gemini-2.5-flash" if "SIMPLE" in intent else "gemini-3.1-pro-preview"
         print(f" -> Classifier Intent: {intent} | Routed Target: {selected_model}")
 
         # Step 3: Execute prompt on target model

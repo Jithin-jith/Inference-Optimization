@@ -23,11 +23,45 @@ Using the official `google-genai` SDK to execute a Needle-in-a-Haystack search o
 """
 
 import os
+import sys
 import time
+import warnings
+import logging
+from typing import TypedDict
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+# Filter out lower-level SDK warnings written directly to sys.stderr
+class StderrFilter:
+    def __init__(self, original_stderr):
+        self.original_stderr = original_stderr
+
+    def write(self, msg):
+        if "automatic function calling" in msg or "AFC" in msg:
+            return
+        self.original_stderr.write(msg)
+
+    def flush(self):
+        if hasattr(self.original_stderr, "flush"):
+            self.original_stderr.flush()
+
+sys.stderr = StderrFilter(sys.stderr)
+
+os.environ["PYTHONWARNINGS"] = "ignore"
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
+warnings.showwarning = lambda *args, **kwargs: None
+
+logging.getLogger("google").setLevel(logging.ERROR)
+logging.getLogger("google.genai").setLevel(logging.ERROR)
+logging.getLogger("langchain_google_genai").setLevel(logging.ERROR)
+
 load_dotenv()
+
 
 def gemini_long_context_demo():
     """

@@ -48,7 +48,7 @@ Input Token ---> Layer 1 -> Layer 2 -> ... -> Layer 8 (Exit Head Check)
   - Frameworks like **CALM** (Confident Adaptive Language Modeling) add exit heads to transformer layers.
   - Can be simulated using confidence scoring across model layers in PyTorch.
 - **Proprietary (Google Gemini Adaptive Routing)**:
-  - Enterprise API systems implement **Dynamic Model Cascade Routing**: simple queries (e.g. classification, extraction) are routed to fast models (`gemini-2.5-flash`), while complex reasoning queries (code, math proof) escalate to `gemini-2.5-pro`.
+  - Enterprise API systems implement **Dynamic Model Cascade Routing**: simple queries (e.g. classification, extraction) are routed to fast models (`gemini-2.5-flash`), while complex reasoning queries (code, math proof) escalate to `gemini-3.1-pro-preview`.
 
 ---
 
