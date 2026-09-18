@@ -1,41 +1,41 @@
 """
 ================================================================================
-MODULE 06: EARLY EXIT DECODING & DYNAMIC LAYER HALTING BENCHMARK
+MODULE 17: OPEN-SOURCE EARLY-EXIT DECODING & DYNAMIC LAYER HALTING BENCHMARK
 ================================================================================
 
 CONCEPT OVERVIEW:
 -----------------
 Standard transformer models process every token through ALL L stacked layers (e.g. 32 layers in Llama-3-8B).
 However, simple syntax tokens (commas, articles, simple words) reach high classification confidence
-at intermediate layers (e.g. layer 8 or 12).
+at intermediate layers (e.g. layer 4 or 8).
 
 EARLY EXIT DECODING MECHANISM:
 ------------------------------
 Auxiliary classification heads (Exit Heads) are attached to intermediate hidden layers (L_1, L_2...).
 At layer l, the model calculates the entropy of the intermediate token prediction:
-Entropy(P_l) = - sum(P_l * log(P_l))
+    Entropy(P_l) = - sum(P_l * log(P_l))
 
 If Entropy(P_l) < Threshold:
 - The model HALTS computation immediately at layer l.
 - Skips upper L - l layers, saving 30% - 50% of computational FLOPs!
 
-WHAT THIS SCRIPT CONTAINS:
---------------------------
-Compares:
-1. Baseline Transformer (No Early Exit - evaluates all 12 layers on every sample)
-2. Early Exit Transformer (Halts at Layer 4 or 8 when Shannon Entropy < Threshold)
-
-Measures FLOPs saved, total layers computed, execution latency, and accuracy retention.
+WHAT THIS SCRIPT BENCHMARKS:
+----------------------------
+1. Baseline Transformer (No Early Exit - evaluates all 12 layers on every sample).
+2. Early Exit Transformer (Halts at Layer 4 or 8 when Shannon Entropy < Threshold).
+3. Detailed Parameter Comparison Table displaying FLOPs saved, total layers computed, and speedup.
 ================================================================================
 """
 
 import time
 import math
 import random
+import sys
 
 # pyrefly: ignore [missing-import]
 import ollama
 
+# Safe PyTorch import with Windows DLL policy fallback
 try:
     import torch
     import torch.nn as nn
@@ -91,9 +91,9 @@ def run_pytorch_early_exit_benchmark():
     Executes a side-by-side comparison benchmark between Standard Full-Layer Decoding
     and Dynamic Early Exit Decoding.
     """
-    print("=" * 85)
-    print("1. Transformer Layer Benchmark: Baseline (Full 12 Layers) vs. Early Exit Halting")
-    print("=" * 85)
+    print("=" * 90)
+    print("1. PYTORCH BENCHMARK: BASELINE (FULL 12 LAYERS) VS. EARLY EXIT LAYER HALTING")
+    print("=" * 90)
 
     num_samples = 100
     random.seed(42)
@@ -128,11 +128,9 @@ def run_pytorch_early_exit_benchmark():
         t3 = time.perf_counter()
         opt_time = t3 - t2
     else:
-        # Fallback math simulation
+        # Fallback simulation math
         base_layers_computed = num_samples * 12
         base_time = 0.045
-        
-        opt_layers_computed = 0
         exit_counts = {"LAYER_4": 50, "LAYER_8": 30, "LAYER_12": 20}
         opt_layers_computed = (50 * 4) + (30 * 8) + (20 * 12)  # 680 layers
         opt_time = 0.024
@@ -141,44 +139,51 @@ def run_pytorch_early_exit_benchmark():
     saved_percent = (layers_saved / base_layers_computed) * 100
     speedup = base_time / opt_time if opt_time > 0 else 0.0
 
+    print(f" -> Input Samples Processed: {num_samples}")
+    print(f" -> Baseline Total Layer Passes: {base_layers_computed} layers")
+    print(f" -> Early Exit Total Layer Passes: {opt_layers_computed} layers (Saved {layers_saved} layer passes)")
+
+    # -------------------------------------------------------------------------
+    # PARAMETER COMPARISON TABLE
+    # -------------------------------------------------------------------------
+    print("\n" + "=" * 90)
+    print("DETAILED PARAMETER COMPARISON SUMMARY: EARLY EXIT LAYER HALTING")
+    print("=" * 90)
     fmt = "  {:<32} | {:<24} | {:<24}"
-    print(fmt.format("PARAMETER / METRIC", "BASELINE (Full 12 Layers)", "OPTIMIZED (Early Exit)"))
-    print("  " + "-" * 82)
+    print(fmt.format("PARAMETER / METRIC", "BASELINE (Full 12 Layers)", "OPTIMIZED (Early Exit Halting)"))
+    print("  " + "-" * 86)
     print(fmt.format("Input Sequences Processed", f"{num_samples} Samples", f"{num_samples} Samples"))
     print(fmt.format("Total Layers Computed", f"{base_layers_computed} Layers", f"{opt_layers_computed} Layers"))
     print(fmt.format("Average Layers / Sample", f"{base_layers_computed / num_samples:.1f} Layers", f"{opt_layers_computed / num_samples:.1f} Layers"))
-    print(fmt.format("Early Exit Distribution", "Layer 12: 100%", f"L4: {exit_counts['LAYER_4']}, L8: {exit_counts['LAYER_8']}, L12: {exit_counts['LAYER_12']}"))
+    print(fmt.format("Early Exit Layer Distribution", "Layer 12: 100%", f"L4: {exit_counts['LAYER_4']}, L8: {exit_counts['LAYER_8']}, L12: {exit_counts['LAYER_12']}"))
     print(fmt.format("Total Execution Time", f"{base_time*1000:.2f} ms", f"{opt_time*1000:.2f} ms"))
     print(fmt.format("Computation FLOPs Saved", "0.0% (Baseline)", f"{saved_percent:.1f}% FLOPs Saved"))
     print(fmt.format("Execution Speedup Factor", "1.00x", f"{speedup:.2f}x Faster"))
-    print("=" * 85 + "\n")
+    print("=" * 90 + "\n")
 
 
-def ollama_adaptive_routing_demo():
+def ollama_early_exit_demo():
     """
-    Demonstrates query complexity classification and adaptive model selection.
+    Demonstrates Ollama layer exit overview.
     """
-    print("=" * 85)
-    print("2. Ollama Practical Demonstration: Query Complexity Classifier")
-    print("=" * 85)
+    print("=" * 90)
+    print("2. OLLAMA EARLY EXIT LAYER DECODING OVERVIEW")
+    print("=" * 90)
 
-    sample_queries = [
-        "What is the capital of France?",
-        r"Write an $O(N \log N)$ algorithm in Rust to solve the traveling salesperson problem with dynamic programming."
-    ]
-
-    for q in sample_queries:
-        word_count = len(q.split())
-        if word_count < 8 and "algorithm" not in q:
-            route = "LIGHT_FAST_MODEL (Llama-3.2-1B)"
-        else:
-            route = "HEAVY_PRO_MODEL (Llama-3.2-3B)"
-
-        print(f"Query: '{q}'")
-        print(f" -> Complexity Score: {'SIMPLE' if 'LIGHT' in route else 'COMPLEX'}")
-        print(f" -> Routed to Target: {route}\n")
+    model_name = "llama3.2:1b"
+    try:
+        t0 = time.perf_counter()
+        resp = ollama.chat(
+            model=model_name,
+            messages=[{"role": "user", "content": "Explain early exit decoding and intermediate exit heads in 2 sentences."}]
+        )
+        t1 = time.perf_counter()
+        print(f" -> Latency: {t1 - t0:.2f} s")
+        print(f" -> Snippet: {resp['message']['content'][:120]}...\n")
+    except Exception as e:
+        print(f" -> [Ollama Notice]: Live call skipped ({e}).\n")
 
 
 if __name__ == "__main__":
     run_pytorch_early_exit_benchmark()
-    ollama_adaptive_routing_demo()
+    ollama_early_exit_demo()

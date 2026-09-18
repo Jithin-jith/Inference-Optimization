@@ -24,7 +24,7 @@ Large Language Model (LLM) inference is fundamentally split into two distinct op
 | 03 | **FlashAttention** | Low TTFT & VRAM | $O(N^2)$ HBM I/O Overhead | Ampere+ GPU (A100/H100) | PyTorch `F.scaled_dot_product_attention` |
 | 04 | **PagedAttention** | Max Throughput & VRAM | Memory Fragmentation | Single/Multi GPU | vLLM, TensorRT-LLM, AWS LMI |
 | 05 | **Batch Inference** | High Throughput | Low GPU Utilization | Any GPU | Gemini Batch API, PyTorch DataLoader |
-| 06 | **Early Exit Decoding** | Low Latency & Cost | Dynamic Sample Complexity | Single GPU / API Cascade | Adaptive Router, Layer Exit Heads |
+| 06 | **Adaptive Model Cascading** | Low Latency & Cost | Heavy Model Over-computation | Single GPU / API Cascade | Adaptive Router, Complexity Heuristic |
 | 07 | **Parallel Decoding** | Low ITL | Autoregressive Sequential Bottleneck | Single GPU | Medusa, Eagle, Lookahead |
 | 08 | **Mixed Precision** | VRAM & Latency | Memory Bandwidth & FP32 Heavy Weights | Tensor Core GPUs (T4/A10G/H100) | PyTorch `torch.cuda.amp`, Ollama |
 | 09 | **Quantized Kernels** | VRAM & Memory B/W | High Bit-width Memory Access | Consumer GPU / CPU / Edge | GGUF (llama.cpp), AWQ, GPTQ, Unsloth |
@@ -35,6 +35,7 @@ Large Language Model (LLM) inference is fundamentally split into two distinct op
 | 14 | **Dynamic Batching** | Max Throughput & Low ITL | Idle GPU Cycles in Static Batching | Single/Multi GPU Server | vLLM, Triton Inference Server |
 | 15 | **Memory Offloading** | Fit Huge Models on Small VRAM | Insufficient GPU VRAM | GPU + Host CPU RAM + NVMe | DeepSpeed-ZeRO-Offload, llama.cpp |
 | 16 | **Streaming Generation** | Perceived Latency (TTFT) | User Wait Time | Any Deployment | Ollama API, Gemini Streaming SDK |
+| 17 | **Early Exit Decoding** | Low ITL & FLOPs | Deep Layer Over-computation | Single GPU | Intermediate Exit Heads, Entropy Halting |
 
 ---
 
@@ -65,10 +66,10 @@ Large Language Model (LLM) inference is fundamentally split into two distinct op
 * **Trade-off**: Increases per-request latency slightly if waiting for batch assembly, but skyrockets overall token throughput.
 * **Manager Insight**: Best for offline, non-real-time tasks (summarization, synthetic data generation, classification). Use Gemini Batch API for 50% cost savings.
 
-### 06. Early Exit Decoding
-* **Concept**: Dynamically halts model generation at earlier hidden layers when internal confidence thresholds are met, skipping upper layers for simpler tokens/prompts.
-* **Trade-off**: Sub-linear compute savings vs. risk of quality degradation on complex reasoning steps.
-* **Manager Insight**: Highly useful for cascade architectures (e.g., routing simple queries to Gemini Flash and hard queries to Gemini Pro).
+### 06. Adaptive Model Cascading
+* **Concept**: Dynamically routes input prompts to an appropriate model tier (e.g., small fast model vs. large heavy model) based on prompt complexity heuristics or pre-classifier scores.
+* **Trade-off**: Requires effective query complexity estimation; routing misclassifications can result in under-powered answers for hard queries or unnecessary expenditure on simple queries.
+* **Manager Insight**: Highly effective cost optimization strategy (e.g., routing simple queries to Gemini Flash and complex multi-step reasoning to Gemini Pro), cutting total API costs by 75%+ with zero accuracy loss on complex queries.
 
 ### 07. Parallel Decoding (Medusa / Lookahead)
 * **Concept**: Modifies model architectures or decoding trees to generate and verify multiple tokens per step without requiring a separate draft model.
@@ -119,6 +120,11 @@ Large Language Model (LLM) inference is fundamentally split into two distinct op
 * **Concept**: Transmits generated tokens to the client over Server-Sent Events (SSE) or WebSockets as soon as they are sampled, rather than waiting for full prompt completion.
 * **Trade-off**: Does not change total generation execution time, but slashes **Perceived TTFT** to near zero (~50-200ms).
 * **Manager Insight**: Essential user experience requirement for interactive chatbots and web applications.
+
+### 17. Early Exit Decoding
+* **Concept**: Dynamically halts transformer layer computation during forward passes when intermediate exit heads achieve low prediction entropy ($H(P_l) < \epsilon$).
+* **Trade-off**: Requires training or fine-tuning auxiliary intermediate classification heads; saving FLOPs without sacrificing token accuracy requires careful threshold tuning.
+* **Manager Insight**: Cuts layer computation and ITL by ~40% for predictable tokens (e.g. syntax, formatting, simple vocabulary) without impacting complex reasoning tokens.
 
 ---
 

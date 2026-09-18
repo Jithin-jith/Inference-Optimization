@@ -17,7 +17,7 @@ The repository is organized into 16 self-contained modules, each covering a spec
 | [03-flash-attention](./03-flash-attention/README.md) | **FlashAttention** | Memory I/O & SRAM | `opensource_ollama.py`, `proprietary_gemini.py` |
 | [04-paged-attention](./04-paged-attention/README.md) | **PagedAttention** | VRAM Virtualization | `opensource_ollama.py`, `proprietary_gemini.py` |
 | [05-batch-inference](./05-batch-inference/README.md) | **Batch Inference** | Throughput Maximization | `opensource_ollama.py`, `proprietary_gemini.py` |
-| [06-early-exit-decoding](./06-early-exit-decoding/README.md) | **Early Exit Decoding** | Dynamic Compute Scaling | `opensource_ollama.py`, `proprietary_gemini.py` |
+| [06-adaptive-model-cascading](./06-adaptive-model-cascading/README.md) | **Adaptive Model Cascading** | Dynamic Model Routing | `opensource_ollama.py`, `proprietary_gemini.py` |
 | [07-parallel-decoding](./07-parallel-decoding/README.md) | **Parallel Decoding** | Multi-Token Prediction | `opensource_ollama.py`, `proprietary_gemini.py` |
 | [08-mixed-precision-inference](./08-mixed-precision-inference/README.md) | **Mixed Precision Inference** | FP16/BF16/FP8 Quantization | `opensource_ollama.py`, `proprietary_gemini.py` |
 | [09-quantized-kernels](./09-quantized-kernels/README.md) | **Quantized Kernels** | GGUF/AWQ/GPTQ Kernels | `opensource_ollama.py`, `proprietary_gemini.py` |
@@ -28,6 +28,7 @@ The repository is organized into 16 self-contained modules, each covering a spec
 | [14-dynamic-batching](./14-dynamic-batching/README.md) | **Dynamic Batching** | Continuous Request Scheduling | `opensource_ollama.py`, `proprietary_gemini.py` |
 | [15-memory-offloading](./15-memory-offloading/README.md) | **Memory Offloading** | GPU/CPU/NVMe Layer Swapping | `opensource_ollama.py`, `proprietary_gemini.py` |
 | [16-streaming-generation](./16-streaming-generation/README.md) | **Streaming Generation** | Token Latency Reduction | `opensource_ollama.py`, `proprietary_gemini.py` |
+| [17-early-exit-decoding](./17-early-exit-decoding/README.md) | **Early Exit Decoding** | Dynamic Layer Halting | `opensource_ollama.py`, `proprietary_gemini.py` |
 
 ---
 
