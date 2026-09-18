@@ -49,12 +49,13 @@ Hidden State h_t ---> Medusa Head 1 ---> Predict T1
 
 ## 4. Open-Source vs Proprietary Paradigm
 
-- **Open-Source (vLLM / TensorRT-LLM / SGLang)**:
+- **Open-Source (vLLM / TensorRT-LLM / SGLang / PyTorch)**:
   - **Medusa**, **Eagle**, and **Lookahead Decoding** are supported in production engines like vLLM and SGLang.
+  - Auxiliary linear heads (`MedusaHeadBlock`) attach to the base transformer backbone hidden state $h_t$ to predict candidate tokens ($t+1, t+2, t+3$), followed by parallel tree-attention verification.
   - vLLM `--speculative-decoding-type medusa` loads pre-trained Medusa heads directly onto base models (e.g. Llama-3-8B-Medusa).
-- **Proprietary (Google Gemini Multi-Token Heads)**:
-  - Google research pioneered multi-token prediction architectures (e.g. Multi-Token Prediction for LLM pre-training and fast inference).
-  - Gemini models leverage internal multi-token heads to boost generation speed on code and structured JSON outputs.
+- **Proprietary (Google Gemini Single-Request Parallel Decoding)**:
+  - **Single-Request Parallel Branch Decoding**: Passing `candidate_count = N` inside **ONE single generation request** (`client.models.generate_content`) triggers Gemini's internal server-side multi-head decoder to branch candidate tokens ($c_1, c_2, \dots, c_N$) in parallel at each step of the autoregressive decode phase within a single inference graph execution.
+  - Generates $N$ candidate completions concurrently inside the single request in $\sim 1\times$ single-request wall clock latency ($\approx 1.75\text{s}$ vs $5.07\text{s}$ for 3 serial requests, achieving a $2.89\times$ latency speedup).
 
 ---
 

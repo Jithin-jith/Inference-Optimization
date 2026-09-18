@@ -1,26 +1,24 @@
 """
 ================================================================================
-MODULE 06: GEMINI DYNAMIC ADAPTIVE ROUTER BENCHMARK & COMPARISON
+MODULE 06: GEMINI ADAPTIVE MODEL CASCADING & ROUTER BENCHMARK
 ================================================================================
 
 CONCEPT OVERVIEW:
 -----------------
-Enterprise AI systems handle diverse workloads: simple factual questions vs complex software design.
-Always dispatching prompts to heavy models (like `gemini-3.1-pro-preview`) wastes budget and increases latency.
+Enterprise AI systems handle diverse workloads: simple factual queries vs complex software design.
+Always dispatching every prompt to a heavy model (like `gemini-3.1-pro-preview`) wastes budget and increases latency.
 
-DYNAMIC CASCADE ROUTER PATTERN:
--------------------------------
-1. Fast Intent Classification: Evaluate user query complexity:
-   - SIMPLE: Route to `gemini-2.5-flash` (10x cheaper, fast response).
+ADAPTIVE MODEL CASCADING PATTERN:
+---------------------------------
+1. Intent & Complexity Classification: Evaluate user query complexity:
+   - SIMPLE: Route to `gemini-2.5-flash` (10x cheaper, sub-second latency).
    - COMPLEX: Route to `gemini-3.1-pro-preview` (Deep reasoning, multi-step math/code).
 
-WHAT THIS SCRIPT DEMONSTRATES:
-------------------------------
-Compares:
-1. Baseline Mode (Static Routing / Heavy Model Only for ALL queries)
-2. Optimized Mode (Early Exit / Adaptive Cascade Model Router)
-
-Measures wall-clock latency, token usage metadata, exact dynamic cost, and model selection.
+WHAT THIS SCRIPT BENCHMARKS:
+----------------------------
+1. Baseline Mode (Static Heavy Routing / Heavy Model Only for ALL queries).
+2. Optimized Mode (Adaptive Model Cascade Router / Dynamic Model Selection).
+3. Detailed Parameter Comparison Table displaying latency, token usage, dynamic cost, and model distribution.
 ================================================================================
 """
 
@@ -92,13 +90,13 @@ def classify_query_intent(client, prompt: str) -> str:
         return "COMPLEX"
 
 
-def gemini_adaptive_cascade_demo():
+def gemini_adaptive_cascade_benchmark():
     """
     Executes a benchmark comparison between Static Routing (Heavy Model Only)
-    and Adaptive Early Exit Model Cascade Routing across identical prompts.
+    and Adaptive Model Cascade Routing across identical prompts.
     """
     print("=" * 90)
-    print("Google Gemini API: Static Heavy Routing vs. Adaptive Model Cascade Benchmark")
+    print("GOOGLE GEMINI BENCHMARK: STATIC HEAVY ROUTING VS. ADAPTIVE MODEL CASCADING")
     print("=" * 90)
 
     api_key = os.environ.get("GOOGLE_API_KEY")
@@ -116,7 +114,7 @@ def gemini_adaptive_cascade_demo():
 
     try:
         # =====================================================================
-        # Phase 1: Baseline Mode (Static Heavy Model Routing / No Early Exit)
+        # Phase 1: Baseline Mode (Static Heavy Model Routing / Monolithic)
         # =====================================================================
         print("\n--- PHASE 1: BASELINE STATIC ROUTING (Heavy Model Only: gemini-3.1-pro-preview) ---")
         base_start = time.perf_counter()
@@ -148,9 +146,9 @@ def gemini_adaptive_cascade_demo():
         base_total_time = base_end - base_start
 
         # =====================================================================
-        # Phase 2: Optimized Mode (Early Exit / Adaptive Cascade Router)
+        # Phase 2: Optimized Mode (Adaptive Model Cascade Router)
         # =====================================================================
-        print("\n--- PHASE 2: OPTIMIZED EARLY EXIT ROUTING (Adaptive Cascade Router) ---")
+        print("\n--- PHASE 2: OPTIMIZED ADAPTIVE MODEL CASCADING (Flash + Pro Cascade Router) ---")
         opt_start = time.perf_counter()
         opt_latencies = []
         opt_prompt_tokens = 0
@@ -212,11 +210,11 @@ def gemini_adaptive_cascade_demo():
         speedup_label = f"{speedup:.2f}x Speedup" if speedup >= 1.0 else f"{speedup:.2f}x (Overhead > Savings)"
 
         print("\n" + "=" * 90)
-        print("DETAILED PARAMETER COMPARISON SUMMARY: STATIC HEAVY vs. ADAPTIVE EARLY EXIT ROUTING")
+        print("DETAILED PARAMETER COMPARISON SUMMARY: STATIC HEAVY vs. ADAPTIVE MODEL CASCADING")
         print("=" * 90)
         
         fmt = "  {:<32} | {:<25} | {:<25}"
-        print(fmt.format("PARAMETER / METRIC", "STATIC ROUTING (Heavy Only)", "ADAPTIVE ROUTING (Early Exit)"))
+        print(fmt.format("PARAMETER / METRIC", "STATIC ROUTING (Heavy Only)", "ADAPTIVE ROUTING (Model Cascade)"))
         print("  " + "-" * 86)
         print(fmt.format("Primary Target Model", "gemini-3.1-pro-preview", "Cascade (Flash + Pro)"))
         print(fmt.format("Queries Processed", f"{len(test_queries)} Queries", f"{len(test_queries)} Queries"))
@@ -237,5 +235,4 @@ def gemini_adaptive_cascade_demo():
 
 
 if __name__ == "__main__":
-    gemini_adaptive_cascade_demo()
-
+    gemini_adaptive_cascade_benchmark()
